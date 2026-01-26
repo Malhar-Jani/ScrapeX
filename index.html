@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Extractor 🕶️</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --glass: rgba(10, 10, 10, 0.8);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #ffffff;
+            --text-dim: #666666;
+            --processing: #3b82f6;
+            --complete: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --skip: #a855f7;
+            --deck-bg: linear-gradient(180deg, rgba(12,12,12,1) 0%, rgba(5,5,5,0.98) 100%);
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px; display: flex; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 1400px; display: grid; grid-template-columns: 420px 1fr; gap: 50px; }
+
+        /* UNIFIED BRANDING FONT */
+        h1, .btn-primary, .sub-tag, .modal-content h2, .btn-deck { 
+            font-family: 'Inter', sans-serif; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+        }
+
+        /* SIDEBAR */
+        .sidebar { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 12px; padding: 32px; height: fit-content; position: sticky; top: 40px; }
+        h1 { font-size: 14px; margin: 0; color: #fff; }
+        
+        .sub-tag { 
+            font-size: 9px; 
+            color: var(--text-dim); 
+            display: block; 
+            margin-bottom: 30px; 
+            margin-top: 8px; 
+            letter-spacing: 1px; 
+            text-transform: none;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; }
+        .v-tag { color: var(--processing); font-size: 8px; opacity: 0.8; text-transform: none; font-family: 'JetBrains Mono'; }
+
+        input[type="text"], input[type="password"] { width: 100%; background: #000; border: 1px solid var(--border); border-radius: 4px; padding: 12px; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; box-sizing: border-box; }
+        input:focus { border-color: var(--processing); outline: none; }
+
+        .module-section { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px; }
+        
+        .module-grid { 
+            display: grid; 
+            grid-template-columns: 24px 1fr 60px; 
+            gap: 12px; 
+            align-items: center; 
+            margin-bottom: 12px; 
+        }
+        .module-label { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: #aaa; text-transform: uppercase; text-align: left; }
+        .checkbox-custom { width: 16px; height: 16px; cursor: pointer; accent-color: var(--processing); }
+        
+        .btn-primary { width: 100%; background: #fff; color: #000; border: none; padding: 16px; border-radius: 4px; font-size: 11px; cursor: pointer; margin-top: 24px; transition: all 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.05; cursor: not-allowed; }
+
+        /* COMMAND DECK */
+        .command-deck { position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0 30px 0; }
+        .deck-inner { background: var(--deck-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        .status-terminal { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .terminal-text { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--processing); text-transform: uppercase; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .tel-item { background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 12px; border-radius: 6px; text-align: center; }
+        .tel-label { font-size: 7px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; font-family: 'JetBrains Mono'; }
+        .tel-val { font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 600; color: #eee; }
+        
+        .progress-bar-container { width: 100%; height: 4px; background: rgba(255,255,255,0.03); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+        .progress-fill { height: 100%; width: 0%; background: var(--processing); transition: width 0.4s ease; }
+        
+        .deck-actions { display: none; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: center; }
+        .btn-deck { background: transparent; border: 1px solid var(--border); border-radius: 4px; padding: 10px; color: var(--text-dim); font-size: 8px; cursor: pointer; transition: 0.2s; }
+        #pauseBtn:hover { color: var(--warning); border-color: var(--warning); }
+        #downloadBtn:hover { color: var(--complete); border-color: var(--complete); }
+        #copyBtn:hover { color: var(--processing); border-color: var(--processing); }
+        #stopBtn:hover { color: var(--danger); border-color: var(--danger); }
+        #statsBtn:hover { color: #fff; border-color: #fff; }
+
+        .scroll-wrap { grid-column: span 5; display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px; }
+        .scroll-wrap span { font-family: 'JetBrains Mono'; font-size: 8px; color: var(--text-dim); text-transform: uppercase; }
+
+        /* DATA FEED */
+        .data-row { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .data-row.active { border-left: 3px solid var(--processing); background: rgba(59, 130, 246, 0.05); }
+        .data-row.done { border-left: 3px solid var(--complete); }
+        .data-row.skipped { border-left: 3px solid var(--skip); opacity: 0.6; }
+        .row-header { display: flex; justify-content: space-between; align-items: center; }
+        .entity-name { font-weight: 600; font-size: 14px; color: #fff; }
+        .detail-tray { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .attr-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .attr-item { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #888; display: flex; align-items: flex-start; gap: 10px; }
+        .attr-key { color: #444; font-weight: 700; font-size: 9px; min-width: 80px; }
+
+        /* ANALYTICS MODAL */
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+        .stat-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
+        .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .stat-val { font-family: 'JetBrains Mono'; font-size: 18px; color: #fff; margin-top: 8px; }
+        .stat-hint { font-size: 7px; opacity: 0.5; font-weight: 400; text-transform: none; }
+
+        /* OVERLAYS */
+        .info-fab { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; border-radius: 50%; background: #fff; color: #000; border: none; font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1100; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .modal-content { background: #0a0a0a; border: 1px solid var(--border); width: 95%; max-width: 750px; max-height: 85vh; border-radius: 12px; padding: 40px; overflow-y: auto; position: relative; }
+        .close-modal { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: #555; cursor: pointer; font-size: 20px; }
+        .manual-step { margin-bottom: 25px; border-left: 2px solid var(--border); padding-left: 20px; }
+        .manual-step h3 { font-size: 11px; margin-top: 0; color: var(--processing); }
+        .manual-step p { font-size: 13px; color: #999; line-height: 1.6; }
+        .manual-step ul { font-size: 13px; color: #999; line-height: 1.8; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sidebar">
+        <h1>The Extractor</h1>
+        <span class="sub-tag">Made By Mal ❤️</span>
+        
+        <div class="form-group"><label>API Key</label><input type="password" id="apiKey" placeholder="Tavily Authorization Key"></div>
+        <div class="form-group"><label>Geographic Context</label><input type="text" id="region" placeholder="e.g. Ahmedabad, India"></div>
+        
+        <div class="form-group">
+            <label>Source Cell <span id="vSource" class="v-tag"></span></label>
+            <input type="text" id="startCell" value="A3" oninput="calculateProjection()">
+        </div>
+
+        <div class="form-group">
+            <label>End Cell (Optional) <span id="vEnd" class="v-tag"></span></label>
+            <input type="text" id="endCell" placeholder="e.g. A50" oninput="calculateProjection()">
+        </div>
+
+        <div class="module-section">
+            <label style="margin-bottom:15px;">Extraction Modules & Destination Columns</label>
+            <div class="module-grid"><input type="checkbox" id="modAddress" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Address</span><input type="text" id="outCol" value="B" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modLinkedIn" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">LinkedIn</span><input type="text" id="colLinkedIn" value="C" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modEmail" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Email</span><input type="text" id="colEmail" value="D" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modPhone" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Phone</span><input type="text" id="colPhone" value="E" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modSocial" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Socials (@)</span><input type="text" id="colSocial" value="F" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modWebsite" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Website</span><input type="text" id="colWebsite" value="G" oninput="calculateProjection()"></div>
+            <div class="module-grid"><input type="checkbox" id="modFounder" class="checkbox-custom" onchange="calculateProjection()"><span class="module-label">Founders</span><input type="text" id="colFounder" value="H" oninput="calculateProjection()"></div>
+        </div>
+
+        <input type="file" id="fileInput" hidden accept=".xlsx, .xls">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()" style="background: transparent; border: 1px solid var(--border); color: #888;">Load Workbook</button>
+        <button class="btn-primary" id="runBtn" disabled>Initialize Extraction</button>
+    </div>
+
+    <div class="main-content">
+        <div class="command-deck" id="commandDeck" style="display: none;">
+            <div class="deck-inner">
+                <div class="status-terminal"><div class="terminal-text" id="statusText">System Standby</div><div id="progPerc" style="font-family:'JetBrains Mono'; font-weight:700;">0%</div></div>
+                <div class="telemetry-grid">
+                    <div class="tel-item"><div class="tel-label">API Called</div><div class="tel-val" id="telActual">0</div></div>
+                    <div class="tel-item"><div class="tel-label">Not Found</div><div class="tel-val" style="color:var(--danger);" id="telNotFound">0</div></div>
+                    <div class="tel-item"><div class="tel-label">Projected</div><div class="tel-val" style="color:var(--warning);" id="telProjected">0</div></div>
+                    <div class="tel-item"><div class="tel-label">ETC</div><div class="tel-val" id="telEtc">--:--</div></div>
+                </div>
+                <div class="progress-bar-container"><div class="progress-fill" id="progFill"></div></div>
+                <div class="deck-actions" id="deckActions">
+                    <button class="btn-deck" id="pauseBtn">Pause</button>
+                    <button class="btn-deck" id="downloadBtn">Live Export</button>
+                    <button class="btn-deck" id="copyBtn">Copy Snapshot</button>
+                    <button class="btn-deck" id="stopBtn">Terminate</button>
+                    <button class="btn-deck" id="statsBtn" style="border-color:#fff; color:#fff;">Overview</button>
+                    <div class="scroll-wrap">
+                        <span>Auto-Scroll Feed</span>
+                        <input type="checkbox" id="autoScroll" checked class="checkbox-custom">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="feed"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="statsModal">
+    <div class="modal-content">
+        <button class="close-modal" id="closeStats">&times;</button>
+        <h2>Mission Intelligence</h2>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-label">Human Time Saved <span class="stat-hint">(Assumes 2m/search)</span></div><div class="stat-val" id="manualTime" style="color:var(--complete)">0m</div></div>
+            <div class="stat-box"><div class="stat-label">API Saved <span class="stat-hint">(Cached/Resumed)</span></div><div class="stat-val" id="totalSaved" style="color:var(--skip)">0</div></div>
+            <div class="stat-box"><div class="stat-label">Total API Used <span class="stat-hint">(Session Total)</span></div><div class="stat-val" id="totalUsed">0</div></div>
+            <div class="stat-box"><div class="stat-label">Speed <span class="stat-hint">(Req/Minute)</span></div><div class="stat-val" id="throughput">0.0</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="manualModal">
+    <div class="modal-content">
+        <button class="close-modal" id="closeManual">&times;</button>
+        <h2>Operations Manual</h2>
+        
+        <div class="manual-step">
+            <h3>To Start:</h3>
+            <p>Make a Tavily Account at app.tavily.com to get a free api key (1000 credits/month)</p>
+        </div>
+
+        <div class="manual-step">
+            <h3>Initializing API & Location</h3>
+            <p>Paste the API key into the API field & Use the Geographic Context (e.g., Ahmedabad) to help the AI narrow down local business entities for higher accuracy.</p>
+        </div>
+
+        <div class="manual-step">
+            <h3>Initializing Source Cell & End Cell:</h3>
+            <p>The Source Cell (e.g., A2) is where your list of names begins & End Cell (Optional) is where you want that list to end. If left empty, the tool reads vertically until it hits three consecutive empty cells.</p>
+        </div>
+
+        <div class="manual-step">
+            <h3>Dynamic Field Mapping</h3>
+            <p>Check the modules you need and assign a Column Letter for each. The results will be placed in that column, aligned perfectly with the source row.</p>
+        </div>
+
+        <div class="manual-step">
+            <h3>Smart Persistence Logic</h3>
+            <p>The system uses Intelligence Skipping. It scans your Excel file first; if a cell already contains data, it is marked as CACHED and the API call is skipped to save you credits. To retry missing data, simply press initialise extraction (you can even change the input parameters like the api key, place too)</p>
+        </div>
+
+        <div class="manual-step">
+            <h3>Live Mission Monitoring</h3>
+            <ul>
+                <li>ETC: Real-time countdown based on thread latency.</li>
+                <li>Overview: View cumulative session data, human time saved, and data composition.</li>
+                <li>Live Export: Click at any point to download the current state of your workbook.</li>
+            </ul>
+        </div>
+
+	<div class="manual-step">
+            <h3>To Save</h3>
+            <ul>
+                <li>Live Export: Instantly generate and download your enriched dataset as a professional Excel (.xlsx) file.</li>
+                <li>Copy Snapshot: This copies the whole spreadsheet (including all your original data & updated data) so you can paste it directly.</li>
+                
+            </ul>
+        </div>
+	<p style="text-align: center; margin-top: 10px; opacity: 0.99;" class="sub-tag">Made By Mal ❤️</p>
+    </div>
+
+</div>
+
+
+<button class="info-fab" id="openManual">❓</button>
+
+<script>
+    let workbookData = [];
+    const MAX_THREADS = 6;
+    let totalAttributesToFind = 0;
+    let completedAttributes = 0;
+    let totalUsedCount = 0;
+    let totalSavedCount = 0;
+    let totalExecutionMs = 0;
+    let successfulCalls = 0;
+    let recentFinds = [];
+    let runApiCallsUsed = 0;
+    let runNotFound = 0;
+    let sessionStartTime = null;
+    let isPaused = false;
+    let isStopped = false;
+
+    window.onload = () => {
+        if(localStorage.getItem('ext_key')) document.getElementById('apiKey').value = localStorage.getItem('ext_key');
+        if(localStorage.getItem('ext_reg')) document.getElementById('region').value = localStorage.getItem('ext_reg');
+    };
+
+    document.getElementById('openManual').onclick = () => document.getElementById('manualModal').style.display = 'flex';
+    document.getElementById('closeManual').onclick = () => document.getElementById('manualModal').style.display = 'none';
+    document.getElementById('statsBtn').onclick = () => { updateAnalyticsUI(); document.getElementById('statsModal').style.display = 'flex'; };
+    document.getElementById('closeStats').onclick = () => document.getElementById('statsModal').style.display = 'none';
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            const data = new Uint8Array(f.target.result);
+            workbookData = XLSX.utils.sheet_to_json(XLSX.read(data, {type: 'array'}).Sheets[XLSX.read(data, {type: 'array'}).SheetNames[0]], {header: 1});
+            document.getElementById('runBtn').disabled = false;
+            document.getElementById('commandDeck').style.display = 'block';
+            calculateProjection(); 
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function calculateProjection() {
+        if (workbookData.length === 0) return;
+        const start = getRef(document.getElementById('startCell').value);
+        const endValInput = document.getElementById('endCell').value;
+        const end = endValInput ? getRef(endValInput) : null;
+        
+        const startVal = (workbookData[start.row] && workbookData[start.row][start.col]) ? workbookData[start.row][start.col] : "---";
+        document.getElementById('vSource').innerText = `[TARGET: ${startVal.toString().substring(0,12)}]`;
+
+        if (end) {
+            const endVal = (workbookData[end.row] && workbookData[end.row][start.col]) ? workbookData[end.row][start.col] : "---";
+            document.getElementById('vEnd').innerText = `[END VAL: ${endVal.toString().substring(0,12)}]`;
+        } else {
+            document.getElementById('vEnd').innerText = "";
+        }
+
+        const activeCount = ['modAddress', 'modLinkedIn', 'modEmail', 'modPhone', 'modSocial', 'modWebsite', 'modFounder'].filter(id => document.getElementById(id).checked).length;
+        let validRows = 0;
+        let rowIndex = start.row;
+        let emptyCount = 0;
+
+        while (rowIndex < workbookData.length) {
+            if (end && rowIndex > end.row) break;
+            const name = workbookData[rowIndex] ? workbookData[rowIndex][start.col] : null;
+            if (name && name.toString().trim() !== "") {
+                validRows++;
+                emptyCount = 0;
+            } else {
+                emptyCount++;
+                if (!end && emptyCount >= 3) break;
+            }
+            rowIndex++;
+        }
+        document.getElementById('telProjected').innerText = validRows * activeCount;
+    }
+
+    function updateRunUI() {
+        const perc = Math.min(Math.round((completedAttributes / totalAttributesToFind) * 100), 100);
+        document.getElementById('progFill').style.width = perc + "%";
+        document.getElementById('progPerc').innerText = perc + "%";
+        document.getElementById('telActual').innerText = runApiCallsUsed;
+        document.getElementById('telNotFound').innerText = runNotFound;
+        if (successfulCalls > 0 && completedAttributes < totalAttributesToFind) {
+            const etc = Math.round(((totalAttributesToFind - completedAttributes) * (totalExecutionMs / successfulCalls)) / (1000 * MAX_THREADS));
+            document.getElementById('telEtc').innerText = `${Math.floor(etc/60)}:${(etc%60).toString().padStart(2,'0')}`;
+        }
+    }
+
+    function updateAnalyticsUI() {
+        document.getElementById('totalUsed').innerText = totalUsedCount;
+        document.getElementById('totalSaved').innerText = totalSavedCount;
+        document.getElementById('manualTime').innerText = Math.round((totalUsedCount + totalSavedCount) * 2) + 'm';
+        if(sessionStartTime) {
+            const totalMins = (performance.now() - sessionStartTime) / 60000;
+            document.getElementById('throughput').innerText = totalUsedCount > 0 ? (totalUsedCount / totalMins).toFixed(1) : '0.0';
+        }
+    }
+
+    async function fetchData(name, region, key, type, existing) {
+        if (existing && existing.toString().trim().length > 1 && existing !== "Not Found") {
+            totalSavedCount++; completedAttributes++; updateRunUI(); return { val: existing, isCached: true };
+        }
+        const callStart = performance.now();
+        try {
+            runApiCallsUsed++; totalUsedCount++;
+            const res = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: key, query: `Find official ${type} for ${name} in ${region}.`, include_answer: true, search_depth: "advanced" }) });
+            const data = await res.json();
+            const val = (data.answer || "Not Found").trim();
+            if(val === "Not Found") runNotFound++;
+            else { successfulCalls++; totalExecutionMs += (performance.now() - callStart); }
+            completedAttributes++; updateRunUI(); return { val, isCached: false };
+        } catch (e) { runNotFound++; completedAttributes++; updateRunUI(); return { val: "Error", isCached: false }; }
+    }
+
+    async function processRow(item, region, key, colMap) {
+        const tray = item.element.querySelector('.attr-grid'); tray.innerHTML = '';
+        let modified = false;
+        const targets = [{ l: 'ADDRESS', t: 'physical address', c: colMap.address }, { l: 'FOUNDER', t: 'founder', c: colMap.founder }, { l: 'LINKEDIN', t: 'LinkedIn URL', c: colMap.linkedin }, { l: 'SOCIALS', t: 'Instagram handle', c: colMap.social }, { l: 'WEBSITE', t: 'website', c: colMap.website }, { l: 'EMAIL', t: 'email', c: colMap.email }, { l: 'PHONE', t: 'phone', c: colMap.phone }];
+        for (const t of targets) if (t.c !== null) {
+            const res = await fetchData(item.name, region, key, t.t, workbookData[item.index][t.c]);
+            workbookData[item.index][t.c] = res.val; if(!res.isCached) modified = true;
+            tray.innerHTML += `<div class="attr-item"><span class="attr-key">${t.l}</span><span>${res.val}</span>${res.isCached ? '<span style="color:var(--skip); font-size:8px; margin-left:5px;">CACHED</span>' : ''}</div>`;
+        }
+        item.element.classList.replace('active', modified ? 'done' : 'skipped');
+        item.element.querySelector('.status-tag').innerText = modified ? "Extracted" : "Verified";
+        if(document.getElementById('autoScroll').checked) {
+            item.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function getRef(cell) {
+        if(!cell) return {col: null, row: 0};
+        const colPart = cell.match(/[A-Z]+/);
+        const col = colPart ? colPart[0].split('').reduce((r, a) => r * 26 + parseInt(a, 36) - 9, 0) - 1 : 0;
+        const row = parseInt(cell.match(/\d+/)?.[0] || 1) - 1;
+        return { col, row };
+    }
+
+    document.getElementById('pauseBtn').onclick = function() { isPaused = !isPaused; this.innerText = isPaused ? "Resume" : "Pause"; };
+    document.getElementById('stopBtn').onclick = () => { isStopped = true; document.getElementById('statusText').innerText = "Terminated"; };
+    document.getElementById('downloadBtn').onclick = () => {
+        if (workbookData.length === 0) return;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(workbookData);
+        XLSX.utils.book_append_sheet(wb, ws, "Enriched Data");
+        XLSX.writeFile(wb, `Extractor_Live_Export_${Date.now()}.xlsx`);
+    };
+
+    // COPY SNAPSHOT MECHANISM
+    document.getElementById('copyBtn').onclick = async function() {
+        if (workbookData.length === 0) return;
+        const start = getRef(document.getElementById('startCell').value);
+        const endValInput = document.getElementById('endCell').value;
+        const end = endValInput ? getRef(endValInput) : null;
+        
+        let lastRowIdx = start.row;
+        let emptyCount = 0;
+        for(let i = start.row; i < workbookData.length; i++) {
+            if (end && i > end.row) { lastRowIdx = end.row; break; }
+            const name = workbookData[i] ? workbookData[i][start.col] : null;
+            if (name && name.toString().trim() !== "") {
+                emptyCount = 0;
+                lastRowIdx = i;
+            } else {
+                emptyCount++;
+                if (!end && emptyCount >= 3) break;
+            }
+        }
+
+        let tsvString = "";
+        for (let i = 0; i <= lastRowIdx; i++) {
+            const row = workbookData[i] || [];
+            tsvString += row.map(c => c === null || c === undefined ? "" : c).join("\t") + "\n";
+        }
+
+        await navigator.clipboard.writeText(tsvString);
+        const orig = this.innerText;
+        this.innerText = "Copied! ✓";
+        setTimeout(() => this.innerText = orig, 2000);
+    };
+
+    document.getElementById('runBtn').onclick = async () => {
+        const key = document.getElementById('apiKey').value; const region = document.getElementById('region').value;
+        const start = getRef(document.getElementById('startCell').value);
+        const endValInput = document.getElementById('endCell').value;
+        const end = endValInput ? getRef(endValInput) : null;
+
+        localStorage.setItem('ext_key', key); localStorage.setItem('ext_reg', region);
+        if(!sessionStartTime) sessionStartTime = performance.now();
+        const colMap = { address: document.getElementById('modAddress').checked ? getRef(document.getElementById('outCol').value + "1").col : null, founder: document.getElementById('modFounder').checked ? getRef(document.getElementById('colFounder').value + "1").col : null, linkedin: document.getElementById('modLinkedIn').checked ? getRef(document.getElementById('colLinkedIn').value + "1").col : null, social: document.getElementById('modSocial').checked ? getRef(document.getElementById('colSocial').value + "1").col : null, website: document.getElementById('modWebsite').checked ? getRef(document.getElementById('colWebsite').value + "1").col : null, email: document.getElementById('modEmail').checked ? getRef(document.getElementById('colEmail').value + "1").col : null, phone: document.getElementById('modPhone').checked ? getRef(document.getElementById('colPhone').value + "1").col : null };
+        if(Object.values(colMap).every(v => v === null)) return alert("Select a module.");
+        isStopped = false; isPaused = false; runApiCallsUsed = 0; runNotFound = 0; completedAttributes = 0;
+        document.getElementById('feed').innerHTML = ''; document.getElementById('runBtn').disabled = true;
+        document.getElementById('deckActions').style.display = 'grid';
+        document.getElementById('statusText').innerText = "Mission Active";
+        
+        let rowIndex = start.row, queue = [], emptyCount = 0;
+        while (rowIndex < workbookData.length) {
+            if (end && rowIndex > end.row) break;
+            const name = workbookData[rowIndex] ? workbookData[rowIndex][start.col] : null;
+            if (name && name.toString().trim() !== "") {
+                emptyCount = 0;
+                const rowDiv = document.createElement('div'); rowDiv.className = 'data-row active';
+                rowDiv.onclick = function() { const t = this.querySelector('.detail-tray'); t.style.display = t.style.display === 'block' ? 'none' : 'block'; };
+                rowDiv.innerHTML = `<div class="row-header"><div class="entity-name">${name}</div><div class="status-tag">Syncing...</div></div><div class="detail-tray"><div class="attr-grid">Loading...</div></div>`;
+                document.getElementById('feed').prepend(rowDiv);
+                queue.push({ name, index: rowIndex, element: rowDiv });
+            } else {
+                emptyCount++;
+                if (!end && emptyCount >= 3) break;
+            }
+            rowIndex++;
+        }
+        totalAttributesToFind = queue.length * Object.values(colMap).filter(v => v !== null).length;
+        const tasks = [...queue], workers = [];
+        async function worker() {
+            while (tasks.length > 0 && !isStopped) {
+                if (isPaused) { await new Promise(r => setTimeout(r, 500)); continue; }
+                await processRow(tasks.shift(), region, key, colMap);
+            }
+        }
+        for (let i = 0; i < Math.min(MAX_THREADS, queue.length); i++) workers.push(worker());
+        await Promise.all(workers);
+        document.getElementById('runBtn').disabled = false;
+        document.getElementById('statusText').innerText = "Complete";
+    };
+</script>
+</body>
+</html>

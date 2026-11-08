@@ -1,0 +1,1 @@
+A research tool that automates the process of finding professional data points like LinkedIn profiles, emails, address for lists of companies/individuals using your Tavily API key. It operates entirely in your browser,letting you export the results as a new Excel file or a direct-paste snapshot for Google Sheets.
